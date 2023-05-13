@@ -1,0 +1,17 @@
+[package]
+name = "mdbook-readme-summary"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.71"
+clap = "4.2.7"
+fs = "0.0.5"
+mdbook = "0.4"
+pathbuf = "0.3.1"
+semver = "1.0.17"
+serde_json = "1.0.96"
+toml = "0.7.3"
+walkdir = "2.3.2"
