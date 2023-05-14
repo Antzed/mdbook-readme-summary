@@ -2,14 +2,7 @@ use mdbook::book::{Book, BookItem};
 use mdbook::errors::Error;
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
 
-use std::fs;
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
-use walkdir::{DirEntry, WalkDir};
-use mdbook::MDBook;
-
-use toml::value::{Table, Value};
-
+use std::path::{Path};
 
 pub struct ReadmeSummary;
 
@@ -24,26 +17,44 @@ impl Preprocessor for ReadmeSummary {
         "readme-summary"
     }
 
-    fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book, Error> {
-        // In testing we want to tell the preprocessor to blow up by setting a
-        // particular config value
+    fn run(&self, ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
         if let Some(nop_cfg) = ctx.config.get_preprocessor(self.name()) {
             if nop_cfg.contains_key("blow-up") {
                 anyhow::bail!("Boom!!1!");
             }
         }
 
-        // generate read me link at src directory, not root
-        generate_readme_links(&ctx.config.book.src)?;
+        fn process_item(item: &mut BookItem) {
+            
+            match item {
+                BookItem::Chapter(chapter) => {
+                    // Get the path of the chapter
+                    if let Some(path) = chapter.path.clone() {
+                        let path_str = path.to_string_lossy();
+                        if path_str.ends_with("index.md") {
+                            if has_toc(&chapter.content) {
+                                let mut parent_path_str = "./src/".to_owned() + path.parent().unwrap().to_str().unwrap();
+                                parent_path_str = parent_path_str + "/";
+                                let parent_path = Path::new(&parent_path_str);
+                                match generate_readme_links(&parent_path) {
+                                    Ok(links) => {
+                                        chapter.content = chapter.content.replace("{{TOC}}", &links);
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Error generating readme links for path {}: {}", parent_path.display(), e);
+                                    }
+                                }
+                            }       
+                        }                 
+                    }
+                }
+                _ => {}
+            }
+        }
+        book.for_each_mut(&mut process_item);
 
-        match MDBook::load(&ctx.root) {
-            Ok(mdbook) => {
-                return Ok(mdbook.book);
-            }
-            Err(e) => {
-                panic!("{}",e);
-            }
-        };
+
+        Ok(book)
     }
 
     fn supports_renderer(&self, renderer: &str) -> bool {
@@ -51,98 +62,47 @@ impl Preprocessor for ReadmeSummary {
     }
 }
 
-// fn generate_readme_links(directory: &Path) -> std::io::Result<String> {
-//     let mut link_tree = String::new();
 
-//     for child in directory.read_dir()? {
-//         if let Ok(child_entry) = child {
-//             if child_entry.file_type()?.is_dir() {
-//                 let child_path = child_entry.path();
-//                 let child_readme_path = child_path.join("README.md");
-
-//                 if child_readme_path.exists() {
-//                     let child_name = child_path.file_name().unwrap().to_str().unwrap();
-
-//                     link_tree.push_str("- [");
-//                     link_tree.push_str(child_name);
-//                     link_tree.push_str("](");
-//                     link_tree.push_str(child_readme_path.to_str().unwrap());
-//                     link_tree.push_str(")\n");
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(link_tree)
-// }
-
-fn is_readme(entry: &DirEntry) -> bool {
-    let file_name = entry.file_name().to_string_lossy();
-    let lowercase_name = file_name.to_lowercase();
-    lowercase_name == "readme.md" || lowercase_name == "readme.html"
+fn has_toc(chapter_content: &str) -> bool {
+    chapter_content.contains("{{TOC}}")
 }
 
-fn is_directory(entry: &DirEntry) -> bool {
-    entry.file_type().is_dir()
-}
+fn generate_readme_links(directory: &Path) -> std::io::Result<String> {
+    let mut link_tree = String::new();
+    eprintln!("detect {{TOC}} in {}", directory.display());
 
-fn has_table_of_contents_marker(readme_path: &Path) -> std::io::Result<bool> {
-    let mut file = fs::File::open(readme_path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-
-    Ok(content.contains("{{TOC}}"))
-}
-
-fn generate_readme_links(src: &Path) -> std::io::Result<()> {
-    for entry in WalkDir::new(src)
-        .min_depth(1)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| is_directory(e))
-    {
-        let path = entry.path();
-        let relative_path = path.strip_prefix(src).unwrap();
-
-        // Skip the root directory
-        if relative_path.components().count() == 0 {
-            continue;
-        }
-
-        let readme_path = path.join("README.md");
-        if !readme_path.exists() || !has_table_of_contents_marker(&readme_path)? {
-            continue;
-        }
-
-        let mut link_tree = String::new();
-
-        for child in path.read_dir()? {
-            if let Ok(child_entry) = child {
+    for child in directory.read_dir()? {
+        if let Ok(child_entry) = child {
+            if child_entry.file_name().to_str().unwrap() != "README.md" && !child_entry.file_name().to_str().unwrap().contains("draft") {
                 if child_entry.file_type()?.is_dir() {
                     let child_path = child_entry.path();
                     let child_readme_path = child_path.join("README.md");
-
                     if child_readme_path.exists() {
-                        let child_relative_path = child_path.strip_prefix(src).unwrap();
                         let child_name = child_path.file_name().unwrap().to_str().unwrap();
 
-                        link_tree.push_str("- [");  
+                        link_tree.push_str("- [");
                         link_tree.push_str(child_name);
                         link_tree.push_str("](./");
-                        link_tree.push_str(child_relative_path.to_str().unwrap());
-                        link_tree.push_str("/)\n");
+                        link_tree.push_str(child_name);
+                        link_tree.push_str("/");
+                        link_tree.push_str(")\n");
                     }
-                }
-            }
-        }
+                }else if child_entry.file_type()?.is_file() {
+                    let child_path = child_entry.path();
+                    let child_name = child_path.file_name().unwrap().to_str().unwrap();
 
-        if !link_tree.is_empty() {
-            let mut content = fs::read_to_string(&readme_path)?;
-            content = content.replace("{{TOC}}", &link_tree);
-            fs::write(readme_path, content)?;
+                    link_tree.push_str("- [");
+                    link_tree.push_str(child_name);
+                    link_tree.push_str("](");
+                    link_tree.push_str(child_path.to_str().unwrap());
+                    link_tree.push_str(")\n");
+                }
+            } else {
+                // eprintln!("child is not ok");
+                continue;  
+            }
         }
     }
 
-    Ok(())
+    Ok(link_tree)
 }
-
