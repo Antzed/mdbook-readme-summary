@@ -38,8 +38,7 @@ impl Preprocessor for ReadmeSummary {
                                 let parent_path = Path::new(&parent_path_str);
                                 match generate_readme_links(&parent_path) {
                                     Ok(links) => {
-                                        chapter.content = chapter.content.replace("{{TOC}}", &links);
-                                    }
+                                        chapter.content = chapter.content.replace("{{TOC}}", &links);                                    }
                                     Err(e) => {
                                         eprintln!("Error generating readme links for path {}: {}", parent_path.display(), e);
                                     }
@@ -93,8 +92,8 @@ fn generate_readme_links(directory: &Path) -> std::io::Result<String> {
 
                     link_tree.push_str("- [");
                     link_tree.push_str(child_name);
-                    link_tree.push_str("](");
-                    link_tree.push_str(child_path.to_str().unwrap());
+                    link_tree.push_str("](./");
+                    link_tree.push_str(child_name);
                     link_tree.push_str(")\n");
                 }
             } else {
