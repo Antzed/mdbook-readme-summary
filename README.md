@@ -27,6 +27,11 @@ and you want a table of content within the readme in each subdirectory showing t
 
 ## Usage
 
+run 
+``` 
+cargo install mdbook-readme-summary
+```
+
 In your README.md files, add `{{TOC}}` in a desired location.
 
 In your book.toml add 
