@@ -1,8 +1,10 @@
 [package]
 name = "mdbook-readme-summary"
+description = "A mdbook Preprocessor that generates table for content for each subdirectory README files."
 version = "1.1.0"
 edition = "2021"
 repository = "https://github.com/Antzed/mdbook-readme-summary"
+license = "MIT OR Apache-2.0"
 keywords = ["mdbook", "preprocessor"]
 categories = ["preprocessor"]
 
