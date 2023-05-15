@@ -99,7 +99,7 @@ fn generate_readme_links(directory: &Path, use_enable_draft: bool, use_enable_lo
 
                         link_tree.push_str("- [");
                         link_tree.push_str(child_name);
-                        link_tree.push_str("](./");
+                        link_tree.push_str("/](./");
                         link_tree.push_str(child_name);
                         link_tree.push_str("/");
                         link_tree.push_str(")\n");
@@ -107,9 +107,11 @@ fn generate_readme_links(directory: &Path, use_enable_draft: bool, use_enable_lo
                 }else if child_entry.file_type()?.is_file() {
                     let child_path = child_entry.path();
                     let child_name = child_path.file_name().unwrap().to_str().unwrap();
+                    // get rid of .md extension
+                    let child_name_name = &child_name[..child_name.len()-3];
 
                     link_tree.push_str("- [");
-                    link_tree.push_str(child_name);
+                    link_tree.push_str(child_name_name);
                     link_tree.push_str("](./");
                     link_tree.push_str(child_name);
                     link_tree.push_str(")\n");
