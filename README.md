@@ -4,6 +4,7 @@
 
 When you are using mdbook and you have the following file structure:
 
+```
 .
 └── src/
     ├── subdirectory1/
@@ -22,6 +23,7 @@ When you are using mdbook and you have the following file structure:
     │   └── README.md
     ├── ...
     └── README.md
+```
 
 and you want a table of content within the readme in each subdirectory showing the content of that directory.
 
